@@ -41,6 +41,10 @@ def last_trades(args):
     otype_label = {'l': 'limit', 'm': 'market'}
 
     for trade in results:
+
+        if float(trade[1]) < args.min:
+            continue
+
         # Initialize an OrderedDict to garantee the column order
         # for later use with the tabulate function
         tdict = OrderedDict()

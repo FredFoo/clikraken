@@ -127,6 +127,7 @@ def parse_args():
     parser_last_trades.add_argument('-s', '--since', default=None,
                                     help="return trade data since given idreturn trade data since given id")
     parser_last_trades.add_argument('-c', '--count', type=int, default=15, help="maximum number of trades.")
+    parser_last_trades.add_argument('-m', '--min', type=int, default=0, help="Minimum volume to look at.")
     parser_last_trades.set_defaults(sub_func=last_trades)
 
     # -----------
