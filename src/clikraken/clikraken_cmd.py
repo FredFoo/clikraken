@@ -22,6 +22,7 @@ from clikraken.api.public.depth import depth
 from clikraken.api.public.last_trades import last_trades
 from clikraken.api.public.ticker import ticker
 from clikraken.api.public.asset_pairs import asset_pairs
+from clikraken.api.public.ohlc import ohlc
 
 from clikraken.api.private.cancel_order import cancel_order
 from clikraken.api.private.get_balance import get_balance
@@ -130,7 +131,21 @@ def parse_args():
     parser_last_trades.add_argument('-m', '--min', type=int, default=0, help="Minimum volume to look at.")
     parser_last_trades.set_defaults(sub_func=last_trades)
 
-    # -----------
+
+    parser_ohlc = subparsers.add_parser(
+        'ohlc',
+        aliases=['o'],
+        help='[public] Get the OHLC data (candles)',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser_ohlc.add_argument('-p', '--pair', default=gv.DEFAULT_PAIR, help=pair_help)
+    parser_ohlc.add_argument('-c', '--count', type=int, default=15, help="maximum number of datapoints.")
+    parser_ohlc.add_argument('-s', '--since', default=None,
+                                    help="return trade data since given idreturn trade data since given id")
+    parser_ohlc.add_argument('-i', '--interval', default=None, help="Time frame interval in minutes, 1 (default), 5, 15, 30, 60, 240, 1440, 10080, 21600")
+    parser_ohlc.set_defaults(sub_func=ohlc)
+
+
+# -----------
     # Private API
     # -----------
 
