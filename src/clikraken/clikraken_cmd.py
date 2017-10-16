@@ -18,17 +18,23 @@ import sys
 import clikraken.global_vars as gv
 import clikraken.clikraken_utils as ck_utils
 
+from clikraken.api.public.asset_pairs import asset_pairs
 from clikraken.api.public.depth import depth
 from clikraken.api.public.last_trades import last_trades
 from clikraken.api.public.ticker import ticker
-from clikraken.api.public.asset_pairs import asset_pairs
 from clikraken.api.public.ohlc import ohlc
 
 from clikraken.api.private.cancel_order import cancel_order
 from clikraken.api.private.get_balance import get_balance
+from clikraken.api.private.get_deposit_addresses import get_deposit_addresses
+from clikraken.api.private.get_deposit_methods import get_deposit_methods
+from clikraken.api.private.get_ledgers import get_ledgers
+from clikraken.api.private.get_trade_balance import get_trade_balance
 from clikraken.api.private.list_closed_orders import list_closed_orders
 from clikraken.api.private.list_open_orders import list_open_orders
+from clikraken.api.private.list_open_positions import list_open_positions
 from clikraken.api.private.place_order import place_order
+from clikraken.api.private.trades import trades
 
 
 def parse_args():
@@ -73,6 +79,7 @@ def parse_args():
                         help='show program version')
     parser.add_argument('--debug', action='store_true', help='debug mode')
     parser.add_argument('--raw', action='store_true', help='output raw json results from the API')
+    parser.add_argument('--csv', action='store_true', help='output results from the API as CSV')
     parser.add_argument('--cron', action='store_true',
                         help='activate cron mode (tone down errors due to timeouts or unavailable Kraken service)')
     parser.set_defaults(main_func=None)
@@ -157,6 +164,14 @@ def parse_args():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser_balance.set_defaults(sub_func=get_balance)
 
+    # User trade balance
+    parser_trade_balance = subparsers.add_parser(
+        'trade_balance',
+        aliases=['tbal'],
+        help='[private] Get your current trade balance',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser_trade_balance.set_defaults(sub_func=get_trade_balance)
+
     # Place an order
     parser_place = subparsers.add_parser(
         'place',
@@ -166,6 +181,7 @@ def parse_args():
     parser_place.add_argument('type', choices=['sell', 'buy'])
     parser_place.add_argument('volume', type=Decimal)
     parser_place.add_argument('price', default=None, nargs='?')
+    parser_place.add_argument('-l', '--leverage', default="none", help='leverage for margin trading')
     parser_place.add_argument('-p', '--pair', default=gv.DEFAULT_PAIR, help=pair_help)
     parser_place.add_argument('-t', '--ordertype', choices=['market', 'limit'], default='limit',
                               help="order type. Currently implemented: [limit, market].")
@@ -191,7 +207,17 @@ def parse_args():
         help='[private] Get a list of your open orders',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser_olist.add_argument('-p', '--pair', default=None, help=pair_help)
+    parser_olist.add_argument('-i', '--txid', default=None,
+                              help='comma delimited list of transaction ids to query info about (20 maximum)')
     parser_olist.set_defaults(sub_func=list_open_orders)
+
+    # List of open positions
+    parser_oplist = subparsers.add_parser(
+        'positions',
+        aliases=['pos'],
+        help='[private] Get a list of your open positions',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser_oplist.set_defaults(sub_func=list_open_positions)
 
     # List of closed orders
     parser_clist = subparsers.add_parser(
@@ -200,7 +226,95 @@ def parse_args():
         help='[private] Get a list of your closed orders',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser_clist.add_argument('-p', '--pair', default=None, help=pair_help)
+    parser_clist.add_argument('-i', '--txid', default=None,
+                              help='comma delimited list of transaction ids to query info about (20 maximum)')
     parser_clist.set_defaults(sub_func=list_closed_orders)
+
+    # Get ledgers info
+    parser_ledgers = subparsers.add_parser(
+        'ledgers',
+        aliases=['lg'],
+        help='[private] Get ledgers info',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser_ledgers.add_argument(
+        '-a', '--asset',
+        default='all',
+        help='comma delimited list of assets to restrict output to')
+    parser_ledgers.add_argument(
+        '-t', '--type',
+        default='all',
+        help='type of ledger to retrieve. Possible values: all|deposit|withdrawal|trade|margin')
+    parser_ledgers.add_argument(
+        '-s', '--start',
+        default=None,
+        help='starting unix timestamp or ledger id of results (exclusive)')
+    parser_ledgers.add_argument(
+        '-e', '--end',
+        default=None,
+        help='ending unix timestamp or ledger id of results (exclusive)')
+    parser_ledgers.add_argument(
+        '-o', '--ofs',
+        default=None,
+        help='result offset')
+    parser_ledgers.add_argument(
+        '-i', '--id',
+        default=None,
+        help='comma delimited list of ledger ids to query info about (20 maximum)')
+    parser_ledgers.set_defaults(sub_func=get_ledgers)
+
+    # Get trades info
+    parser_trades = subparsers.add_parser(
+        'trades',
+        aliases=['tr'],
+        help='[private] Get trades history',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser_trades.add_argument(
+        '-t', '--type',
+        default='all',
+        help='type of trade. Values: all|any position|closed position|closing position|no position')
+    # TODO: trades parameter
+    parser_trades.add_argument(
+        '-s', '--start',
+        default=None,
+        help='starting unix timestamp or trade tx id of results (exclusive)')
+    parser_trades.add_argument(
+        '-e', '--end',
+        default=None,
+        help='ending unix timestamp or trade tx id of results (exclusive)')
+    parser_trades.add_argument(
+        '-o', '--ofs',
+        default=None,
+        help='result offset')
+    parser_trades.add_argument(
+        '-i', '--id',
+        default=None,
+        help='comma delimited list of transaction ids to query info about (20 maximum)')
+    parser_trades.add_argument('-p', '--pair', default=None, help=pair_help)
+    parser_trades.set_defaults(sub_func=trades)
+
+    # User Funding
+
+    # Deposit Methods
+    parser_deposit_methods = subparsers.add_parser(
+        'deposit_methods',
+        aliases=['dm'],
+        help='[private] Get deposit methods',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser_deposit_methods.add_argument('-a', '--asset', default=gv.DEFAULT_ASSET, help='asset being deposited')
+    parser_deposit_methods.set_defaults(sub_func=get_deposit_methods)
+
+    # Deposit Addresses
+    parser_deposit_addresses = subparsers.add_parser(
+        'deposit_addresses',
+        aliases=['da'],
+        help='[private] Get deposit addresses',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser_deposit_addresses.add_argument('-a', '--asset', default=gv.DEFAULT_ASSET, help='asset being deposited')
+    parser_deposit_addresses.add_argument('-m', '--method', default=None, help='name of the deposit method')
+    parser_deposit_addresses.add_argument('-n', '--new', action='store_true',
+                                          help="whether or not to generate a new address")
+    parser_deposit_addresses.add_argument('-1', '--one', action='store_true', help="return just one address")
+    parser_deposit_addresses.set_defaults(sub_func=get_deposit_addresses)
 
     args = parser.parse_args()
 

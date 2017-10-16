@@ -43,6 +43,9 @@ def load_config():
     gv.DEFAULT_PAIR = os.getenv('CLIKRAKEN_DEFAULT_PAIR', conf.get('currency_pair'))
     gv.TICKER_PAIRS = os.getenv('CLIKRAKEN_TICKER_PAIRS', conf.get('ticker_currency_pairs'))
 
+    # Get the default asset pair from the config file
+    gv.DEFAULT_ASSET = os.getenv('CLIKRAKEN_DEFAULT_ASSET', conf.get('asset'))
+
     gv.TZ = conf.get('timezone')
     gv.TRADING_AGREEMENT = conf.get('trading_agreement')
 
@@ -68,21 +71,41 @@ def print_results(res):
         print(json.dumps(res, indent=2))
 
 
-def asset_pair_short(ap_str):
-    """Convert XETHZEUR to ETHEUR"""
+def base_quote_short_from_asset_pair(ap_str):
+    """Try to identify the short version of the base and quote of the asset pair"""
+
     ap_str = ap_str.upper()
-    # Pair is in long format
+
     if len(ap_str) == 8:
+        # XABCZDEF
         base = ap_str[1:4] if ap_str[0] in ['Z', 'X'] else ap_str[:4]
         quote = ap_str[5:] if ap_str[4] in ['Z', 'X'] else ap_str[4:]
-        return base + quote
-    # Assuming that pair is already in short format
-    return ap_str
+    elif len(ap_str) == 6:
+        # ABCDEF
+        base = ap_str[:3]
+        quote = ap_str[3:]
+    elif len(ap_str) == 7:
+        if ap_str[-4] in ['Z', 'X']:
+            # ABCXDEF
+            base = ap_str[:3]
+            quote = ap_str[4:]
+        elif ap_str[0] in ['Z', 'X']:
+            # XABCDEF
+            base = ap_str[1:4]
+            quote = ap_str[4:]
+        else:
+            # ABCDEFG
+            # assume EFG is the quote ¯\_(ツ)_/¯
+            base = ap_str[:4]
+            quote = ap_str[4:]
+
+    return base, quote
 
 
-def quote_currency_from_asset_pair(ap_str):
-    """Extract the quote currency from the asset pair string"""
-    return ap_str[5:]
+def asset_pair_short(ap_str):
+    """Convert XETHZEUR to ETHEUR"""
+    base, quote = base_quote_short_from_asset_pair(ap_str)
+    return base + quote
 
 
 def check_trading_agreement():
@@ -98,3 +121,18 @@ def check_trading_agreement():
 def output_default_settings_ini(args):
     """Output the contents of the default settings.ini file"""
     print(gv.DEFAULT_SETTINGS_INI)
+
+
+def csv(items, headers=None, separator=';'):
+    output = []
+    # Headers
+    if headers is not None:
+        if headers == "keys":
+            headers = items[0].keys()
+        output += [headers]
+    # Items
+    for item in items:
+        it = [val for val in item.values()]
+        output += [it]
+    # Render output as txt
+    return '\n'.join([separator.join([str(i) for i in o]) for o in output])

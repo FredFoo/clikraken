@@ -13,6 +13,7 @@ from collections import OrderedDict
 
 from clikraken.api.api_utils import query_api
 from clikraken.clikraken_utils import _tabulate as tabulate
+from clikraken.clikraken_utils import csv
 
 
 def get_balance(args=None):
@@ -28,7 +29,7 @@ def get_balance(args=None):
         # Initialize an OrderedDict to garantee the column order
         # for later use with the tabulate function
         asset_dict = OrderedDict()
-        # Remove leading Z or X from asset pair if it is of lemgth 4
+        # Remove leading Z or X from asset pair if it is of length 4
         asset_dict['asset'] = asset[1:] if len(asset) == 4 and asset[0] in ['Z', 'X'] else asset
         asset_dict['balance'] = res[asset]
         bal_list.append(asset_dict)
@@ -39,4 +40,7 @@ def get_balance(args=None):
     # Sort alphabetically
     bal_list = sorted(bal_list, key=lambda asset_dict: asset_dict['asset'])
 
-    print(tabulate(bal_list, headers="keys"))
+    if args.csv:
+        print(csv(bal_list, headers="keys"))
+    else:
+        print(tabulate(bal_list, headers="keys"))

@@ -6,7 +6,22 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
-- placeholder
+- Placeholder
+
+## [0.7.0] - 2017-09-06
+- Add margin trading support: (by melko)
+  - `leverage` argument for the place subcommand
+  - new `positions` subcommand, to let the user see his open positions
+  - new `trade_balance` subcommand, for a short summary of the trading balance
+- Add commands `deposit_methods` and `deposit_addresses` (by citec)
+- Add `ledgers` command (by citec)
+- Add QueryOrders calls by adding `--txid`/`-i` to `clist` and `olist` commands (by citec)
+- Add TradesHistory and QueryTrades call as `trades` command (by citec)
+- Add CSV output with global option `--csv` (by citec)
+
+## [0.6.2] - 2017-08-03
+- Fix bug in balance output for asset pairs shorter than 4 characters.
+- clikraken_utils: add base_quote_short_from_asset_pair() to handle base/quote detection from asset pair string
 
 ## [0.6.1] - 2017-06-15
 - Fix issue #6: force tabulate to represent floats with more decimals.
@@ -149,7 +164,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - API key file location moved to '~/.config/clikraken/kraken.key'
 
-[Unreleased]: https://github.com/zertrin/clikraken/compare/0.6.1...HEAD
+[Unreleased]: https://github.com/zertrin/clikraken/compare/0.7.0...HEAD
+[0.7.0]: https://github.com/zertrin/clikraken/compare/0.6.2...0.7.0
+[0.6.2]: https://github.com/zertrin/clikraken/compare/0.6.1...0.6.2
 [0.6.1]: https://github.com/zertrin/clikraken/compare/0.6.0...0.6.1
 [0.6.0]: https://github.com/zertrin/clikraken/compare/0.5.0...0.6.0
 [0.5.0]: https://github.com/zertrin/clikraken/compare/0.4.2...0.5.0
